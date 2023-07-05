@@ -1,0 +1,37 @@
+#!/usr/bin/stap
+
+probe begin {
+    printf("Tracing incoming IGMP queries and outgoing IGMP responses...\n")
+}
+
+probe kernel.function("igmp_rcv") {
+    $skb = $current->skb
+    $igmp = struct igmphdr () $skb->data
+    $type = $igmp->type
+
+    if ($type == IGMP_HOST_MEMBERSHIP_QUERY) {
+        printf("Incoming IGMP Query\n")
+        printf("Source IP: %s\n", inet_ntoa($igmp->saddr))
+        printf("Group IP: %s\n", inet_ntoa($igmp->daddr))
+        printf("Interface: %s\n", dev_name($skb->dev))
+        printf("Timestamp: %lld\n", gettimeofday_ns())
+    }   
+}
+
+probe kernel.function("igmp_send_report") {
+    $skb = $current->skb
+    $igmp = struct igmphdr () $skb->data
+    $type = $igmp->type
+
+    if ($type == IGMP_HOST_MEMBERSHIP_REPORT) {
+        printf("Outgoing IGMP Response\n")
+        printf("Source IP: %s\n", inet_ntoa($igmp->saddr))
+        printf("Group IP: %s\n", inet_ntoa($igmp->daddr))
+        printf("Interface: %s\n", dev_name($skb->dev))
+        printf("Timestamp: %lld\n", gettimeofday_ns())
+    }   
+}
+
+probe end {
+    printf("\nTracing finished.\n")
+}
